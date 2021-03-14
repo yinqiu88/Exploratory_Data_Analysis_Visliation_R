@@ -1,0 +1,204 @@
+---
+title: "Problem Set 1"
+author: Melissa Bischoff & Yinqiu (Rachel) Feng
+date: Due 2/3/21
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# this prevents package loading message from appearing in the rendered version of your problem set
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
+                      message = FALSE)
+library(Sleuth3)
+library(ggplot2)
+library(scales)
+library(plyr)
+library(dplyr)
+library(boot)
+library(Lock5withR)
+library(ggridges)
+```
+
+**1. Education and Income**\
+*a) Draw multiple horizontal boxplots of `Income2005`, by `Educ` (education level). Order the boxplots from lowest educational level at the bottom to highest educational level at the top. (Hint: reorder factor levels) What do you observe?*
+```{r}
+ex0525$Educ = factor(ex0525$Educ, levels=c(">16","16","13-15","12","<12"))
+
+ggplot(ex0525, aes(x=Income2005, y=Educ)) +
+  geom_boxplot(aes(color=Educ)) +
+  facet_grid(Educ ~ .) +
+  ggtitle("Income by Education") +
+  scale_x_continuous(name="Income ($)", labels=comma, breaks=seq(0,750000,100000)) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank()
+    ) +
+  scale_colour_discrete("Education (years)")
+```
+\
+We see from this graph that there is a clear relationship between median income and education; generally, the higher the education, the higher the median income. The median income line increases steadily with education level. The minimum incomes for all education levels are all $0, this likely means that at any education level one can be unemployed (whether by choice or not is unknown). The maximum incomes for each group also increases with education level. Though it is worth noting that for each level, there are outliers within the level that surpass the median income levels for the levels above them.\
+\
+*b) Draw histograms, faceted by `Educ`, for the same data. Describe one insight that was not visible in the boxplots.*
+```{r}
+ggplot(ex0525, aes(x=Income2005, color=Educ)) +
+  geom_histogram(bins=30, boundary=0, fill="white") +
+  facet_grid(Educ ~ .) +
+  ylab("Count") +
+  scale_x_continuous(name="Income ($)", labels=comma, breaks=seq(0,750000,100000)) +
+  ggtitle("Income by Education") +
+  scale_colour_discrete("Education (years)")
+```
+\
+One thing I notice in the histogram graph that I didn't in the boxplots is the size and spread of the data. For example, it looks like most of the data fall in the education category `12`, followed by `13-15`. There are considerably less cases in the `<12` and `>16` levels. I print the number of observations for each education level below and see that education level `12` has almost double the amount of data than level `13-15` and over double compared to the other levels.
+```{r}
+plyr::count(ex0525, "Educ")
+```
+\
+*c) Plot overlapping density curves of the same data, one curve per year, on a single set of axes. Each curve should be a different color. What additional information do you learn?*
+```{r}
+ggplot(ex0525, aes(x=Income2005)) +
+  geom_density(aes(x = Income2005, color = Educ)) +
+  ylab("Density") +
+  xlab("Income") +
+  scale_x_continuous(name="Income ($)", labels=comma, breaks=seq(0,750000,100000)) +
+  # scale_y_continuous(name="Income", labels=comma, breaks=seq(0,.00002)) +
+  ggtitle("Income by Education") +
+  scale_colour_discrete("Education (years)")
+```
+\
+From this graph, I can see the difference in wideness of each of the curves. This tells me whether most of the data for an education level have similar incomes or if the incomes vary a lot for the same education level. For example, `<12` education has a very narrow density curve, which means that most of the people with less than 12 years of education earn roughly the same salary, around $25,000. Income group `>16` has a wider curve meaning that most of the data with greater than 16 years of education earn a wider range of salary (around 50k - 150k).\
+\
+**2. Boundaries**\
+*a) Find or create a small dataset (< 100 observations) for which right open and right closed histograms for the same parameters are not identical. Display the full dataset (that is, show the numbers) and the plots of the two forms.*
+```{r}
+new_data = sample(x = 10:20, size = 20, replace = TRUE)
+data = data.frame("random_numbers" = new_data)
+data
+```
+```{r}
+ggplot(data, aes(x=random_numbers)) + 
+  geom_histogram(binwidth=6,right=FALSE) +
+  ggtitle(label = "Right Open Histogram") +
+  xlab(label = "new data")
+```
+```{r}
+ggplot(data, aes(x=random_numbers)) + 
+  geom_histogram(binwidth=6,right=TRUE) +
+  ggtitle(label = "Right Closed Histogram") +
+  xlab(label = "new data")
+```
+\
+*b) Adjust parameters--the same for both--so that the right open and right closed versions become identical. Explain your strategy.*
+```{r}
+ggplot(data, aes(x=random_numbers)) + 
+  geom_histogram(binwidth=1,right=FALSE) +
+  ggtitle(label = "Right Open Histogram") +
+  xlab(label = "new data")
+```
+```{r}
+ggplot(data, aes(x=random_numbers)) + 
+  geom_histogram(binwidth=1,right=TRUE) +
+  ggtitle(label = "Right Closed Histogram") +
+  xlab(label = "new data")
+```
+\
+Changing the binwidth from 6 to 1 also changes the center of bin as well. While binwidth = 6 and the plot is right open the data point 20 will fall in to left part. The same data point will fall into the right part when it is right close histogram. When I change the binwidth to 1 this is fixed and the plots look the same now.\
+\
+**3. Beavers**\
+*a) Use QQ (quantile-quantile) plots with theoretical normal lines to compare `temp` for the built-in `beaver1` and `beaver2` datasets.  Which appears to be more normally distributed?*
+```{r}
+qqnorm(beaver1$temp, pch = 1, frame = FALSE); qqline(beaver1$temp, col = "steelblue", lwd = 2)
+```
+
+```{r}
+qqnorm(beaver2$temp, pch = 1, frame = FALSE); qqline(beaver2$temp, col = "steelblue", lwd = 2)
+```
+\
+The `beaver1` data look closer to normally distributed than the `beaver2` data. The `beaver2` data points weave in and out of the QQ line. The `beaver1` data points closely follow the QQ line in the middle of the theoretical quantiles.\
+\
+*b) Draw density histograms with density curves and theoretical normal curves overlaid. Does the data appear to be normally distributed?*
+```{r}
+ggplot(beaver1, aes(x=temp)) + 
+  geom_histogram(aes(y=..density..), colour="darkblue", fill="white")+
+  geom_density(alpha=.1, fill="red", color = "red") +
+  stat_function(fun = dnorm, color = "black",
+                args = list(mean = mean(beaver1$temp), sd = sd(beaver1$temp))) +
+  labs(title="Beaver 1 Data")
+```
+\
+The `beaver1` data appear to be close to normally distributed. It generally follows a bell shape, except has a clear dip in the bell between 37 and 37.25. I don't think this dip and resulting peak are large enough to consider the distribution bimodal.\
+\
+```{r}
+ggplot(beaver2, aes(x=temp)) + 
+  geom_histogram(aes(y=..density..), colour="darkblue", fill="white")+
+  geom_density(alpha=.1, fill="red", color = "red") +
+  stat_function(fun = dnorm, color = "black",
+                args = list(mean = mean(beaver2$temp), sd = sd(beaver2$temp))) + 
+  labs(title="Beaver 2 Data")
+```
+\
+The `beaver2` data seem far from normally distributed in the density histogram plot. The data follow more of a bimodal distribution as they have two peaks in the density curve.\
+\
+*c) Perform the Shapiro-Wilk test for normality using the `shapiro.test()` function and interpret the results.*
+```{r}
+shapiro.test(beaver1$temp)
+shapiro.test(beaver2$temp)
+```
+\
+The output for the Shapiro-Wilk normality test on temperatures in `beaver1` and `beaver2` both produce p-values that are well below the $\alpha = .05$ threshold. Thus, for both tests, we reject the null hypothesis that the samples come from a normal distribution. We conclude that the data are not normally distributed.\
+\
+*d) Did all of the methods for testing for normality (a, b, and c) produce the same results? Briefly explain.*\
+For the beaver2 temperature data, all of the methods of testing for normality showed that the data are not normally distributed. The `beaver2` QQ plot was far from the normal QQ line, the `beaver2` density histogram was bimodal and did not follow the normal bell curve, and the Shapiro-Wilk test yielded a $pvalue < \alpha = .05$ meaning we conclude that the data do not come from normal distribution.\
+For the `beaver1` temperature data, if looking at just the QQ plot and density histogram, I'd say that the data were semi-close to normally distributed. However, after conducting the Shapiro-Wilk test that yielded a $pvalue < \alpha = .05$, which means the data are not normally distributed, I look back at the first two method with more scrutiny. After looking at methods A and B again I decide that it's up to the level of scrutiny that the interpreter looks at the graphs with to decide whether or not it is normally distributed. I can see how someone looking with high scrutiny concludes that it is not normally distributed from QQ plot and density histogram; and vice versa for someone with lower scrutiny to conclude it is normally distributed. After considering all 3 methods of testing for normality, I'd conclude that the data are not normally distributed.\
+\
+**4. Doctors**\
+*Draw two histograms of the number of deaths attributed to coronary artery disease among doctors in the breslow dataset (boot package), one for smokers and one for non-smokers. Hint: read the help file ?breslow to understand the data.*
+```{r}
+breslow$smoke=as.factor(breslow$smoke)
+ggplot(breslow, aes(x=age, y=y, color=smoke)) +
+  geom_bar(stat="identity",width = 1) +
+  facet_grid(smoke ~ .) +
+  scale_y_continuous(name="Count (deaths)", labels=comma) +
+  ggtitle("Deaths by Age for Smokers & Non-Smokers") +
+  scale_colour_discrete("Smoker (0=no; 1=yes)")
+```
+ \
+ We see that the count of deaths of smokers are higher across each age group in the data.\
+ \
+**5. Nutrition**\
+*Data: `NutritionStudy` in the Lock5withR package*\
+*a) Create a new categorical variable that represents ages in 10-year groups: 0-10, 11-20, 21-30, etc. Choose one of the continuous variables in the dataset and create a ridgeline plot (ggridges package) showing the distribution of the chosen variable by age.*
+```{r}
+NutritionStudy = NutritionStudy %>%
+dplyr::mutate(age_group = case_when(
+  (Age > 10 & Age <= 20) ~ "11-20",
+  (Age > 20 & Age <= 30) ~ "21-30",
+  (Age > 30 & Age <= 40) ~ "31-40",
+  (Age > 40 & Age <= 50) ~ "41-50",
+  (Age > 50 & Age <= 60) ~ "51-60",
+  (Age > 60 & Age <= 70) ~ "61-70",
+  (Age > 70 & Age <= 80) ~ "71-80",
+  (Age > 80 & Age <= 90) ~ "81-90",
+  (Age > 90 & Age <= 100) ~ "91-100"
+  ))
+ggplot(NutritionStudy, aes(y=age_group,x=Cholesterol,color=age_group)) +
+  geom_density_ridges(fill="grey", alpha=.5) +
+  ylab(label = "Age Group") +
+  scale_colour_discrete("Age Group") +
+  ggtitle(label = "Cholesterol by Age Group")
+```
+\
+*b) Display the same data as in part a) using boxplots.*
+```{r}
+ggplot(NutritionStudy, aes(y=age_group,x=Cholesterol,color=age_group)) +
+  geom_boxplot(fill="grey", alpha=.5) +
+  ylab(label = "Age Group") +
+  scale_colour_discrete("Age Group") +
+  ggtitle(label = "Cholesterol by Age Group")
+```
+\
+*c) Compare a) and b). Which do you think is more effective for this data and why?*\
+\
+I think the boxplot is more effective for this data. Since this is medical data it is useful to see the medians and outliers. Doctors typically use medians in populations and other descriptive statistics as markers for what is a normal cholesterol level. Seeing the outliers is important also to determine if one's cholesterol level is significantly out of range.
+
